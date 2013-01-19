@@ -73,14 +73,19 @@ namespace Boy_Meets_Girl
         /// <param name="newInfo">A new action-reaction that's been observed and needs to be banked against memory.</param>
         public void combineAction(Action newInfo)
         {
-            if (newInfo.reaction != this.reaction) //If it's a new reaction.
+            if (reaction == null)
             {
-                this.reactionCertainty -= newInfo.reactionCertainty;
+                reaction = newInfo.reaction;
+            }
+
+            if (newInfo.reaction != this.reaction && newInfo.reaction != null) //If it's a new reaction and (for the purposes of this, if it's not null)
+            {
+                /*this.reactionCertainty -= newInfo.reactionCertainty;
                 if (this.reactionCertainty <= 0)
                 {
                     reactionCertainty = newInfo.reactionCertainty;
                     reaction = newInfo.reaction;
-                }
+                }*/
             }
             else
             {
@@ -88,7 +93,7 @@ namespace Boy_Meets_Girl
             }
 
             //Either way, your preference for an action is much more fickle.
-            this.netPositive = newInfo.netPositive;
+            //this.netPositive = newInfo.netPositive;
         }
 
         /// <summary>

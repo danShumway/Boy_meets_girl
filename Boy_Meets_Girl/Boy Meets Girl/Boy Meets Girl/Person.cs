@@ -40,7 +40,7 @@ namespace Boy_Meets_Girl
         /// <summary>
         /// This is in pixels per second in order to simplify the math.
         /// </summary>
-        public float movementSpeed = 50;
+        public float movementSpeed = Main.random.Next(40, 80);
 
         /// <summary>
         /// Use 1 (right), 0, and -1 (left) to indicate a movement direction.  Everything else is handled in-house.
@@ -207,7 +207,7 @@ namespace Boy_Meets_Girl
                         {
                             if(inventory.Contains(i)) //Do you have that flower?
                                 //What would happen if I gave them a flower?
-                                toCheck = new Action(this, giveFlower, null, new dynamic[] { (b as Person), i }, 0, 0);
+                                toCheck = new Action(this, giveFlower, null, new dynamic[] { (b as Person), i }, 100, 1);
 
                             //Check the action you just got to see how good it is for you.
                             int index = knownCausality.IndexOf(toCheck);
@@ -270,7 +270,7 @@ namespace Boy_Meets_Girl
                 }
 
                 //Tell the world what you did.
-                world.broadcastAction(new Action(this, this.getFlower, null, new dynamic[] { (b as Flower).color }, 20, 0));
+                world.broadcastAction(new Action(this, this.getFlower, null, new dynamic[] { (b as Flower).color }, 100, 5));
 
                 if(b.color == favoriteColor)
                     increaseOwnHappiness(flowerInterest);
@@ -283,15 +283,16 @@ namespace Boy_Meets_Girl
 
         public void observeAction(Action toObserve)
         {
-            //Are you already looking around to figure something out.
+            //If you aren't already looking around to figure something out.
             if (currentInterest == 0)
             {
-                //Do you care about this guy?
-                if (peopleOfInterest.ContainsKey(toObserve.subject))
+                //Do you care about this guy?  You can't observe yourself since you don't care about yourself.  I think.
+                if (peopleOfInterest.ContainsKey(toObserve.subject) && toObserve.subject != this)
                 {
                     //increase awareness.
                     currentInterest = peopleOfInterest[toObserve.subject];
                     shortTermMemory = toObserve;
+
                 }
             }
             else //If so, this is important.  It might be causation.
@@ -314,14 +315,21 @@ namespace Boy_Meets_Girl
                     knownCausality.Add(shortTermMemory);
 
                 //Is the action you just saw involve someone you weren't paying attention to before?  Start paying attention to them now.
-                if (!peopleOfInterest.ContainsKey(shortTermMemory.reaction.subject))
-                {
-                    peopleOfInterest.Add(shortTermMemory.reaction.subject, 0); //You're not following yet, just interested.
-                }
-                else
-                {
-                    peopleOfInterest[shortTermMemory.reaction.subject] += peopleOfInterest[shortTermMemory.subject] / 2; //Now you're interested.
-                }
+                if(shortTermMemory.reaction.subject != this) //As long as it isn't you.
+                    if(shortTermMemory.reaction.subject != shortTermMemory.subject) //Or the person you were watching before.
+                        if (!peopleOfInterest.ContainsKey(shortTermMemory.reaction.subject))
+                        {
+                            peopleOfInterest.Add(shortTermMemory.reaction.subject, 1); //This guy is interesting.
+                            //I'm going to set up some basic logic for this person.
+
+                            for (int i = 0; i < Main.colors.Length - 1; i++) //For each flower color.
+                            {
+                                Action get = new Action(shortTermMemory.reaction.subject, shortTermMemory.reaction.subject.getFlower, null, new dynamic[] { i }, 100, 0);
+                                //If it's your favorite color, you feel a loss by giving it.
+                                knownCausality.Add(new Action(this, giveFlower, get, new dynamic[] { shortTermMemory.reaction.subject, i }, 100, ((color == favoriteColor) ? 50 : 50)));
+                                knownCausality.Add(get);
+                            }
+                        }
 
                 //Now set yourself to pay attention to what you just observed and see what happens.
                 shortTermMemory = null;
@@ -392,17 +400,21 @@ namespace Boy_Meets_Girl
                     //Simple rectangular collision detection.  You have to be a certain distance from someone to give them an item.  It's hardcoded for now.
                     //It's also broken and you need to fix it.
                     if (world.player == this || /* if you're the player, you can ignore distance */
-                        ((parameters[0] as Person).position.X - 80 > this.position.X - 80 && (parameters[0] as Person).position.X - 80 < this.position.X + 80
-                    && (parameters[0] as Person).position.Y - 80 > this.position.Y - 80 && (parameters[0] as Person).position.Y - 80 < this.position.Y + 80))
+                        ((parameters[0] as Person).position.X > this.position.X - 12 && (parameters[0] as Person).position.X < this.position.X + 12
+                    && (parameters[0] as Person).position.Y > this.position.Y - 12 && (parameters[0] as Person).position.Y < this.position.Y + 12))
                     {
                         //Give the item.
                         this.inventory.Remove(parameters[1]);
-                        //Feel the loss.
-                        //this.happiness -= attachment;
-                        //Broadcast that you gave an item.
+                        //Feel the loss if it's your favorite.
+                        /*if (parameters[1] == favoriteColor)
+                            happiness -= 5; //This should be an event in the future, but for now, causality doesn't use n-trees, so it can't be without messing everything else up.
+                        */
 
+                        //You just gave someone something.
+                        world.broadcastAction(new Action(this, giveFlower, null, new dynamic[] { parameters[0], parameters[1] }, 100, 0));
                         //The other person now gets the item.  Update them accordingly.
                         (parameters[0] as Person).getFlowerReal(parameters[1], this);
+
                     }
                     else
                     {
@@ -421,7 +433,7 @@ namespace Boy_Meets_Girl
         {
             //Also tell the world you got happier.
             this.happiness += parameters[0];
-            world.broadcastAction(new Action(this, increaseOwnHappiness, null, null, 10, 10));
+            world.broadcastAction(new Action(this, increaseOwnHappiness, null, null, 100, 200)); //People want other people to be happy.
         }
 
         /// <summary>
@@ -435,7 +447,7 @@ namespace Boy_Meets_Girl
             if (color == favoriteColor)
             {
 
-                world.broadcastAction(new Action(this, this.getFlower, null, new dynamic[] { color }, 20, 0));
+                world.broadcastAction(new Action(this, this.getFlower, null, new dynamic[] { color }, 100, 50));
                 increaseOwnHappiness(flowerInterest); //Get happy.
                 if (!peopleOfInterest.ContainsKey(person)) //Pay attention to this guy.
                 {
@@ -445,7 +457,8 @@ namespace Boy_Meets_Girl
                     for (int i = 0; i < Main.colors.Length - 1; i++) //For each flower color.
                     {
                         Action get = new Action(person, person.getFlower, null, new dynamic[] { i }, 0, 0);
-                        knownCausality.Add(new Action(this, giveFlower, get, new dynamic[] { person, i }, 100, -5)); //Change the desirability of this.
+                        //If it's your favorite color, you feel a loss by giving it.
+                        knownCausality.Add(new Action(this, giveFlower, get, new dynamic[] { person, i }, 100, ((color == favoriteColor)? -5 : 0)));
                         knownCausality.Add(get);
                     }
 
@@ -453,7 +466,7 @@ namespace Boy_Meets_Girl
 
                 }
                 else
-                    peopleOfInterest[person] += flowerInterest*5; //I'm even more interested in you.
+                    peopleOfInterest[person] += 1; //I'm even more interested in you.  Also fixes the problem with people that aren't interested in anything.
                     //This is where the empathy stat would come in.
             }
         }
@@ -475,7 +488,7 @@ namespace Boy_Meets_Girl
 
         public override string[] getInfo()
         {
-            return new string[] { "Happiness: " + happiness, "Favorite Color: " + favoriteColor, "Intelligence: " + intelligence, "Flower Interest: " + flowerInterest, "Interest towards you: " + ((peopleOfInterest.ContainsKey(world.player)) ? peopleOfInterest[world.player] : 0 ) };
+            return new string[] { "Happiness: " + happiness, "Favorite Color: " + favoriteColor, "Flower Interest: " + flowerInterest, "Number of people interested in: " + peopleOfInterest.Count, "Interest towards you: " + ((peopleOfInterest.ContainsKey(world.player)) ? peopleOfInterest[world.player] : 0 ) };
         }
 
         #endregion
