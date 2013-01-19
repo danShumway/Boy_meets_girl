@@ -313,6 +313,16 @@ namespace Boy_Meets_Girl
                 else //You just saw this.  Add it now.
                     knownCausality.Add(shortTermMemory);
 
+                //Is the action you just saw involve someone you weren't paying attention to before?  Start paying attention to them now.
+                if (!peopleOfInterest.ContainsKey(shortTermMemory.reaction.subject))
+                {
+                    peopleOfInterest.Add(shortTermMemory.reaction.subject, 0); //You're not following yet, just interested.
+                }
+                else
+                {
+                    peopleOfInterest[shortTermMemory.reaction.subject] += peopleOfInterest[shortTermMemory.subject] / 2; //Now you're interested.
+                }
+
                 //Now set yourself to pay attention to what you just observed and see what happens.
                 shortTermMemory = null;
                 currentInterest = 0;
