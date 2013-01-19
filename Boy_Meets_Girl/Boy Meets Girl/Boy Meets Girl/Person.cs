@@ -6,6 +6,10 @@ using System.Reflection;
 
 namespace Boy_Meets_Girl
 {
+
+    /// <summary>
+    /// A lot of the variables are pretty messed up.  The motivation system were never really fleshed out, but that's fine for now.
+    /// </summary>
     class Person : BaseObject
     {
         //Type for action pair.
